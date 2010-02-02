@@ -292,7 +292,7 @@ module ETL #:nodoc:
           values << row[nk]
         end
         statement = statement.join(" AND ")
-        x=ActiveRecord::Base.send(:sanitize_sql_array, [statement, *values])
+        x=ETL::Execution::Base.send(:sanitize_sql_array, [statement, *values])
         return x
       end
       

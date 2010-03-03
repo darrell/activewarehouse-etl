@@ -1,18 +1,18 @@
 operational_database:
   adapter: mysql
-  username: root
+  username: build
   host: localhost
   database: etl_unittest
   encoding: utf8
 data_warehouse:
   adapter: mysql
-  username: root
+  username: build
   host: localhost
   database: etl_unittest
   encoding: utf8
 etl_execution:
   adapter: mysql
-  username: root
+  username: build
   host: localhost
   database: etl_unittest_execution
   encoding: utf8

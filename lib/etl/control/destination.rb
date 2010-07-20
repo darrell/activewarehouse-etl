@@ -288,8 +288,12 @@ module ETL #:nodoc:
         statement = []
         values = []
         natural_key.each do |nk|
-          statement << "#{nk} = ?"
-          values << row[nk]
+          if row[nk].nil?
+            statement << "#{nk} IS NULL"
+          else
+            statement << "#{nk} = ?"
+            values << row[nk]
+          end
         end
         statement = statement.join(" AND ")
         x=ETL::Execution::Base.send(:sanitize_sql_array, [statement, *values])
@@ -381,8 +385,12 @@ module ETL #:nodoc:
           ETL::Engine.logger.debug "Row: #{row.inspect}"
           ETL::Engine.logger.debug "Existing Row: #{@existing_row.inspect}"
           ETL::Engine.logger.debug "comparing: #{row[csd_field].to_s} != #{@existing_row[csd_field].to_s}"
-          x=row[csd_field].to_s != @existing_row[csd_field].to_s 
-          ETL::Engine.logger.debug x
+          if row[csd_field].to_s != @existing_row[csd_field].to_s
+            x=true
+          else
+            x=false
+          end
+          ETL::Engine.logger.debug "Fields differ?: #{x}"
           x
         }
       end

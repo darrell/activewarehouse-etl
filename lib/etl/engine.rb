@@ -1,3 +1,4 @@
+require 'active_support/all'
 module ETL #:nodoc:
   
   class Base < ActiveRecord::Base

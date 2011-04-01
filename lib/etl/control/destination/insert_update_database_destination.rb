@@ -69,15 +69,11 @@ module ETL #:nodoc:
             primarykey.each do |name|
               primarykeyfilter << "#{conn.quote_column_name(name)} = #{conn.quote(row[name])}"
             end
-            q = "SELECT * FROM #{conn.quote_table_name(table_name)} WHERE #{primarykeyfilter.join(' AND ')}"
+            q = "SELECT COUNT(1) FROM #{conn.quote_table_name(table_name)} WHERE #{primarykeyfilter.join(' AND ')}"
             ETL::Engine.logger.debug("Executing select: #{q}")
-            res = conn.execute(q, "Select row #{current_row}")
-            none = true
-            res.each_hash do |f|
-              none = false
-            end
+            count = conn.select_value(q, "Select row #{current_row}")
 
-            if none
+            if count == '0'
               names = []
               values = []
               order.each do |name|

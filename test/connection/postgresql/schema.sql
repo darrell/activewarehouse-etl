@@ -1,4 +1,4 @@
-drop table people;
+drop table if exists people;
 create table people (
   id int not null primary key,
   first_name character varying(255) not null,
@@ -7,9 +7,9 @@ create table people (
 );
 
 -- Needed for ActiveRecord
-drop sequence people_id_seq;
+drop sequence if exists people_id_seq;
 create sequence people_id_seq;
-SELECT nextval('people_id_seq');
+SELECT nextval('people_id_seq'::regclass);
 
 drop table places;
 create table places (

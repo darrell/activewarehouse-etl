@@ -9,7 +9,7 @@ require File.join(File.dirname(__FILE__), 'lib/etl', 'version')
 
 module AWETL
   PKG_BUILD       = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
-  PKG_NAME        = 'activewarehouse-etl'
+  PKG_NAME        = 'darrell-activewarehouse-etl'
   PKG_VERSION     = ETL::VERSION::STRING + PKG_BUILD
   PKG_FILE_NAME   = "#{PKG_NAME}-#{PKG_VERSION}"
   PKG_DESTINATION = ENV["PKG_DESTINATION"] || "../#{PKG_NAME}"
@@ -87,7 +87,7 @@ module AWETL
 
   def self.spec(package_prefix = '')
     Gem::Specification.new do |s|
-      s.name = 'activewarehouse-etl'
+      s.name = 'darrell-activewarehouse-etl'
       s.version = AWETL::PKG_VERSION
       s.summary = "Pure Ruby ETL package."
       s.description = <<-EOF

@@ -318,6 +318,12 @@ module ETL #:nodoc:
           ETL::Engine.logger.debug "expiring original record"
           @existing_row[scd_end_date_field] = @timestamp
           @existing_row[scd_latest_version_field] = false
+
+          if configuration[:scd][:merge_nils]
+            scd_fields(row).each do |f|
+              row[f] ||= @existing_row[f]
+            end
+          end
           
           buffer << @existing_row
 
@@ -381,17 +387,16 @@ module ETL #:nodoc:
       # Check whether non-scd fields have changed since the last
       # load of this record.
       def has_scd_field_changes?(row)
-        scd_fields(row).any? { |csd_field| 
-          ETL::Engine.logger.debug "Row: #{row.inspect}"
-          ETL::Engine.logger.debug "Existing Row: #{@existing_row.inspect}"
-          ETL::Engine.logger.debug "comparing: #{row[csd_field].to_s} != #{@existing_row[csd_field].to_s}"
-          if row[csd_field].to_s != @existing_row[csd_field].to_s
-            x=true
-          else
-            x=false
-          end
-          ETL::Engine.logger.debug "Fields differ?: #{x}"
-          x
+        fields = scd_fields(row)
+        ETL::Engine.logger.debug "         Row: %s" % row.slice(*fields).inspect
+        ETL::Engine.logger.debug "Existing Row: %s" % @existing_row.slice(*fields).inspect
+
+        fields.any? { |csd_field| 
+          mismatch = configuration[:scd][:merge_nils] ? !row[csd_field].nil? : true
+          mismatch = mismatch && (row[csd_field].to_s != @existing_row[csd_field].to_s)
+
+          ETL::Engine.logger.debug "#{csd_field}: " + (mismatch ? row[csd_field].to_s + " != " + @existing_row[csd_field].to_s : @existing_row[csd_field].to_s)
+          mismatch
         }
       end
       

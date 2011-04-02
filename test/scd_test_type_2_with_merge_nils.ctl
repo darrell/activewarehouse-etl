@@ -1,5 +1,5 @@
 source :in, {
-  :file => "scd/#{ENV['run_number']}.txt",
+  :file => "scd/#{ENV['run_number']}-nil.txt",
   :parser => :delimited
 },
 [
@@ -11,8 +11,13 @@ source :in, {
   :zip_code
 ]
 
+
+
+
+
+
 destination :out, {
-  :file => 'output/scd_test_type_2.txt',
+  :file => 'output/scd_test_type_2_with_merge_nils.txt',
   :natural_key => [:first_name, :last_name],
   :scd => {
     :type => 2,
@@ -32,7 +37,7 @@ destination :out, {
 }
 
 post_process :bulk_import, {
-  :file => 'output/scd_test_type_2.txt',
+  :file => 'output/scd_test_type_2_with_merge_nils.txt',
   :target => :data_warehouse,
   :table => 'person_dimension'
 }

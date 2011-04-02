@@ -188,6 +188,29 @@ class ScdTest < Test::Unit::TestCase
           assert lines.empty?, "scheduled load expected to be empty, was #{lines.size} records"
         end
       end
+      context "merge_nils" do
+        should 'treat nil values like a change without merge_nils' do
+          do_type_2_run_without_merge_nils(1)
+          do_type_2_run_without_merge_nils(2)
+          assert_nil find_bobs.detect { |bob| 2 == bob.id }['zip_code']
+        end
+
+        should 'ignore nil values in source with merge_nils' do
+          do_type_2_run_with_merge_nils(1)
+          do_type_2_run_with_merge_nils(2)
+          do_type_2_run_with_merge_nils(3)
+          bob = find_bobs.detect { |bob| bob.latest_version? }
+          assert_equal '32123',       bob['zip_code'] 
+          assert_equal 'Los Angeles', bob['city']
+          assert_equal 'CA',          bob['state']
+
+          do_type_2_run_with_merge_nils(4)
+          bob = find_bobs.detect { |bob| bob.latest_version? }
+          assert_equal '90392',       bob['zip_code'] 
+          assert_equal 'Los Angeles', bob['city']
+          assert_equal 'CA',          bob['state']
+        end
+      end
     end
   end
   
@@ -195,6 +218,18 @@ class ScdTest < Test::Unit::TestCase
     ENV['run_number'] = run_num.to_s
     assert_nothing_raised do
       run_ctl_file("scd_test_type_2.ctl")
+    end
+  end
+  def do_type_2_run_with_merge_nils(run_num)
+    ENV['run_number'] = run_num.to_s
+    assert_nothing_raised do
+      run_ctl_file("scd_test_type_2_with_merge_nils.ctl")
+    end
+  end
+  def do_type_2_run_without_merge_nils(run_num)
+    ENV['run_number'] = run_num.to_s
+    assert_nothing_raised do
+      run_ctl_file("scd_test_type_2_without_merge_nils.ctl")
     end
   end
   

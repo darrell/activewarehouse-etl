@@ -8,8 +8,13 @@ source :in, {
   :address,
   :city,
   :state,
-  :zip_code
+  :zip_code,
+  :date
 ]
+
+after_read do |row| 
+  row.except(:date)
+end
 
 # NOTE: These are not usually required for a type 1 SCD dimension, but since
 # we're sharing this table with the type 2 tests, they're necessary.

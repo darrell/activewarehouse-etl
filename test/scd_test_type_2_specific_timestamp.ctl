@@ -12,16 +12,13 @@ source :in, {
   :date
 ]
 
-after_read do |row| 
-  row.except(:date)
-end
-
 destination :out, {
-  :file => 'output/scd_test_type_2.txt',
+  :file => 'output/scd_test_type_2_specific_timestamp.txt',
   :natural_key => [:first_name, :last_name],
   :scd => {
     :type => 2,
     :merge_nils => true,
+    :timestamp => Time.now - 1.day,
     :dimension_target => :data_warehouse,
     :dimension_table => 'person_dimension'
   },
@@ -37,7 +34,7 @@ destination :out, {
 }
 
 post_process :bulk_import, {
-  :file => 'output/scd_test_type_2.txt',
+  :file => 'output/scd_test_type_2_specific_timestamp.txt',
   :target => :data_warehouse,
   :table => 'person_dimension'
 }

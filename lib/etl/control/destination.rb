@@ -209,7 +209,12 @@ module ETL #:nodoc:
           return
         end
         
-        @timestamp = Time.now
+        @timestamp = case configuration[:scd][:timestamp]
+                     when Time, Date then configuration[:scd][:timestamp]
+                     when Symbol then row[configuration[:scd][:timestamp]]
+                     when nil then Time.now
+                     else raise "Unknown timestamp: #{configuration[:scd][:timestamp].inspect}. Use Time or Date for a specific time, a symbol for a value from each row, or nil for the current time"
+                     end
 
         # See if the scd_fields of the current record have changed
         # from the last time this record was loaded into the data

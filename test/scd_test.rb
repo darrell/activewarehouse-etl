@@ -188,6 +188,29 @@ class ScdTest < Test::Unit::TestCase
           assert lines.empty?, "scheduled load expected to be empty, was #{lines.size} records"
         end
       end
+      context "scd timestamp" do
+        should 'use the supplied timestamp' do
+          do_type_2_run_with_fixed_timestamp(1)
+          do_type_2_run_with_fixed_timestamp(2)
+          do_type_2_run_with_fixed_timestamp(3)
+          bobs = find_bobs
+          assert_equal 3, bobs.length
+          bobs.each do |bob| assert_equal Date.yesterday, bob.effective_date.to_date; end
+        end
+
+        should 'use the timestamp in the row' do
+          do_type_2_run_with_row_timestamp(1)
+          do_type_2_run_with_row_timestamp(2)
+          do_type_2_run_with_row_timestamp(3)
+          bobs = find_bobs
+          assert_equal 3, bobs.length
+          bobs.each do |bob| 
+            assert_equal 2010, bob.effective_date.year
+            assert_equal 5, bob.effective_date.month
+            assert_equal bob.id, bob.effective_date.day
+          end
+        end
+      end
       context "merge_nils" do
         should 'treat nil values like a change without merge_nils' do
           do_type_2_run_without_merge_nils(1)
@@ -232,6 +255,18 @@ class ScdTest < Test::Unit::TestCase
       run_ctl_file("scd_test_type_2_without_merge_nils.ctl")
     end
   end
+  def do_type_2_run_with_row_timestamp(run_num)
+    ENV['run_number'] = run_num.to_s
+    assert_nothing_raised do
+      run_ctl_file("scd_test_type_2_row_timestamp.ctl")
+    end
+  end
+  def do_type_2_run_with_fixed_timestamp(run_num)
+    ENV['run_number'] = run_num.to_s
+    assert_nothing_raised do
+      run_ctl_file("scd_test_type_2_specific_timestamp.ctl")
+    end
+  end
   
   def do_type_2_run_with_only_city_state_zip_scd(run_num)
     ENV['type_2_scd_fields'] = Marshal.dump([:city, :state, :zip_code])
@@ -266,10 +301,10 @@ class ScdTest < Test::Unit::TestCase
         self["id"].to_i
       end
       def bob.effective_date
-        DateTime.parse(self["effective_date"])
+        DateTime.parse(self["effective_date"].to_s)
       end
       def bob.end_date
-        DateTime.parse(self["end_date"])
+        DateTime.parse(self["end_date"].to_s)
       end
       def bob.latest_version?
         ActiveRecord::ConnectionAdapters::Column.value_to_boolean(self["latest_version"])

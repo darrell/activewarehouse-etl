@@ -94,16 +94,7 @@ module ETL #:nodoc:
       
       # Get the order of elements from the source order
       def order_from_source
-        order = []
-        control.sources.first.definition.each do |item|
-          case item
-          when Hash
-            order << item[:name]
-          else
-            order << item
-          end
-        end
-        order
+        control.sources.first.order
       end
       
       # Return true if the row is allowed. The row will not be allowed if the
@@ -135,7 +126,7 @@ module ETL #:nodoc:
 
       # returns the fields that are required to identify an SCD
       def scd_required_fields
-        if scd?
+        if scd? and scd_type == 2
          [scd_effective_date_field, scd_end_date_field, scd_latest_version_field]
         else
          []
@@ -254,7 +245,7 @@ module ETL #:nodoc:
             when Symbol
               generator = generators[key] ||= ETL::Generator::Generator.class_for_name(value).new(options)
               row[key] = generator.next
-            when Proc
+            when Proc, Method
               row[key] = value.call(row)
             else
               if value.is_a?(ETL::Generator::Generator)
@@ -296,13 +287,11 @@ module ETL #:nodoc:
           if row[nk].nil?
             statement << "#{nk} IS NULL"
           else
-            statement << "#{nk} = ?"
-            values << row[nk]
+            statement << "#{nk} = #{ActiveRecord::Base.send(:quote_bound_value, row[nk], connection)}"
           end
         end
         statement = statement.join(" AND ")
-        x=ETL::Execution::Base.send(:sanitize_sql_array, [statement, *values])
-        return x
+        return statement
       end
       
       # Do all the steps required when a SCD *has* changed.  Exact steps

@@ -16,6 +16,7 @@ module ETL #:nodoc:
       #  for future use.
       # *<tt>:resolver</tt>: Object or Class which implements the method resolve(value)
       # *<tt>:default</tt>: A default foreign key to use if no foreign key is found
+      # *<tt>:cache</tt>: If true and the resolver responds to load_cache, load_cache will be called
       def initialize(control, name, configuration={})
         super
         
@@ -23,7 +24,10 @@ module ETL #:nodoc:
         @resolver = configuration[:resolver]
         @resolver = @resolver.new if @resolver.is_a?(Class)
         @default = configuration[:default]
-        if configuration[:cache] ||= true
+        
+        configuration[:cache] = true if configuration[:cache].nil?
+        
+        if configuration[:cache]
           if resolver.respond_to?(:load_cache)
             resolver.load_cache
           else
@@ -87,44 +91,57 @@ class SQLResolver
   # referencing a connection defined in the ETL database.yml file or an actual
   # ActiveRecord connection instance. If the connection is not specified then
   # the ActiveRecord::Base.connection will be used.
-  def initialize(table, field, connection=nil)
-    @table = table
-    @field = field
+  def initialize(atable, afield, connection=nil)
+    # puts "table: #{atable.inspect} field:#{afield.inspect}"
+    @table = atable
+    @field = afield
     @connection = (connection.respond_to?(:quote) ? connection : ETL::Engine.connection(connection)) if connection
     @connection ||= ActiveRecord::Base.connection
   end
+  
   def resolve(value)
+    return nil if value.nil?
+    r = nil
     if @use_cache
-      cache[cache_key(value)]
+      r = cache[value]
+      # puts "resolve failed: #{value.class.name}:#{value.inspect} from: #{@table}.#{@field}" unless r
     else
       q = "SELECT id FROM #{table_name} WHERE #{wheres(value)}"
-      @connection.select_value(q)
+      # puts q
+      r = @connection.select_value(q)
     end
+    r
   end
+  
   def table_name
     ETL::Engine.table(@table, @connection)
   end
+  
   def cache
     @cache ||= {}
   end
+  
   def load_cache
-    @use_cache = true
     q = "SELECT id, #{field.join(', ')} FROM #{table_name}"
+    # puts q
     @connection.select_all(q).each do |record|
-      cache[cache_key(record.values_at(*field))] = record['id']
+      ck = @field.kind_of?(Array) ? record.values_at(*@field) : record[@field]
+      # puts "load_cache key: #{ck.class.name}:#{ck.inspect}"
+      # puts "  #{@field.class.name}:#{@field.inspect}"
+      # puts "  #{record[@field].class.name}:#{record[@field].inspect}"
+      cache[ck] = record['id']
     end
+    @use_cache = true
   end
 
   private
-  def field
-    unless @field.kind_of?(Array)
-      @field = [ @field ]
-    end
-    @field
-  end
 
-  def cache_key(value)
-    value.hash
+  def field
+    if @field.kind_of?(Array)
+      @field
+    else
+      [ @field ]
+    end
   end
 
   def wheres(value)
@@ -133,6 +150,31 @@ class SQLResolver
       "#{a[0]} = #{@connection.quote(a[1])}"
     }.join(' AND ')
   end
+end
+
+class IncrementalCacheSQLResolver < SQLResolver
+
+  def initialize(atable, afield, connection=nil)
+    super
+  end
+  
+  def resolve(value)
+    return nil if value.nil?
+    r = cache[value]
+    unless r
+      q = "SELECT id FROM #{table_name} WHERE #{wheres(value)}"
+      r = @connection.select_value(q)
+      if r
+        cache[value] = r
+      end
+    end
+    r
+  end
+
+  def load_cache
+    @cache = {}
+  end
+
 end
 
 class FlatFileResolver
@@ -150,7 +192,7 @@ class FlatFileResolver
   
   # Get the rows from the file specified in the initializer.
   def rows
-    @rows ||= FasterCSV.read(@file)
+    @rows ||= CSV.read(@file)
   end
   protected :rows
   

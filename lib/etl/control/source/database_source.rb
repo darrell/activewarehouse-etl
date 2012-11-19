@@ -1,6 +1,8 @@
 require 'fileutils'
 
 module ETL #:nodoc:
+  class NoLimitSpecifiedError < StandardError; end
+  
   class Source < ::ActiveRecord::Base #:nodoc:
     # Connection for database sources
   end
@@ -132,7 +134,7 @@ module ETL #:nodoc:
         raise "Local cache trigger file not found" unless File.exists?(local_file_trigger(file))
         
         t = Benchmark.realtime do
-          FasterCSV.open(file, :headers => true).each do |row|
+          CSV.open(file, :headers => true).each do |row|
             result_row = ETL::Row.new
             result_row.source = self
             row.each do |header, field|
@@ -154,7 +156,7 @@ module ETL #:nodoc:
       def write_local(file)
         lines = 0
         t = Benchmark.realtime do
-          FasterCSV.open(file, 'w') do |f|
+          CSV.open(file, 'w') do |f|
             f << columns
             query_rows.each do |row|
               f << columns.collect { |column| row[column.to_s] }
@@ -170,7 +172,7 @@ module ETL #:nodoc:
       def query
         return @query if @query
         q = "SELECT #{select} FROM #{@table}"
-        q << " #{join}" if join
+        q << " JOIN #{join}" if join
         
         conditions = []
         if new_records_only
@@ -189,12 +191,13 @@ module ETL #:nodoc:
         
         q << " GROUP BY #{group}" if group
         q << " ORDER BY #{order}" if order
-
-        if ETL::Engine.limit || ETL::Engine.offset
-          options = {}
-          options[:limit] = ETL::Engine.limit if ETL::Engine.limit
-          options[:offset] = ETL::Engine.offset if ETL::Engine.offset
-          connection.add_limit_offset!(q, options)
+        
+        limit = ETL::Engine.limit
+        offset = ETL::Engine.offset
+        if limit || offset
+          raise NoLimitSpecifiedError, "Specifying offset without limit is not allowed" if offset and limit.nil?
+          q << " LIMIT #{limit}"
+          q << " OFFSET #{offset}" if offset
         end
         
         q = q.gsub(/\n/,' ')
@@ -203,7 +206,12 @@ module ETL #:nodoc:
       end
       
       def query_rows
-        @query_rows ||= connection.select_all(query)
+        return @query_rows if @query_rows
+        if (configuration[:mysqlstream] == true)
+          MySqlStreamer.new(query,@target,connection)
+        else
+          connection.select_all(query)
+        end
       end
       
       # Get the database connection to use

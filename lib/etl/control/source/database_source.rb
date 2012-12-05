@@ -61,7 +61,12 @@ module ETL #:nodoc:
       def join
         configuration[:join]
       end
-      
+
+      # define what sort of join to use for the join part of the query, defaults to 'JOIN'
+      def join_type
+        configuration[:join_type] || 'JOIN'
+      end
+
       # Get the select part of the query, defaults to '*'
       def select
         configuration[:select] || '*'
@@ -172,7 +177,7 @@ module ETL #:nodoc:
       def query
         return @query if @query
         q = "SELECT #{select} FROM #{@table}"
-        q << " JOIN #{join}" if join
+        q << " #{join_type} #{join}" if join
         
         conditions = []
         if new_records_only
